@@ -2,6 +2,11 @@ export type Card = {
   id: string;
   title: string;
   details: string;
+  property_type?: string | null;
+  market?: string | null;
+  size_sf?: number | null;
+  price?: number | null;
+  cap_rate?: number | null;
 };
 
 export type Column = {

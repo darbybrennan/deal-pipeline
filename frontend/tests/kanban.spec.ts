@@ -1,41 +1,115 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-test("loads the kanban board", async ({ page }) => {
+const signIn = async (page: Page) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Kanban Studio" })).toBeVisible();
-  await expect(page.locator('[data-testid^="column-"]')).toHaveCount(5);
-});
+  await page.getByLabel("Username").fill("user");
+  await page.getByLabel("Password").fill("password");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Deal Pipeline" })).toBeVisible();
+};
 
-test("adds a card to a column", async ({ page }) => {
-  await page.goto("/");
-  const firstColumn = page.locator('[data-testid^="column-"]').first();
-  await firstColumn.getByRole("button", { name: /add a card/i }).click();
-  await firstColumn.getByPlaceholder("Card title").fill("Playwright card");
-  await firstColumn.getByPlaceholder("Details").fill("Added via e2e.");
-  await firstColumn.getByRole("button", { name: /add card/i }).click();
-  await expect(firstColumn.getByText("Playwright card")).toBeVisible();
-});
-
-test("moves a card between columns", async ({ page }) => {
-  await page.goto("/");
-  const card = page.getByTestId("card-card-1");
-  const targetColumn = page.getByTestId("column-col-review");
+const dragCard = async (page: Page, cardTestId: string, columnTestId: string) => {
+  const card = page.getByTestId(cardTestId);
+  const column = page.getByTestId(columnTestId);
   const cardBox = await card.boundingBox();
-  const columnBox = await targetColumn.boundingBox();
-  if (!cardBox || !columnBox) {
-    throw new Error("Unable to resolve drag coordinates.");
-  }
-
-  await page.mouse.move(
-    cardBox.x + cardBox.width / 2,
-    cardBox.y + cardBox.height / 2
-  );
+  const columnBox = await column.boundingBox();
+  if (!cardBox || !columnBox) throw new Error("Unable to resolve drag coordinates.");
+  await page.mouse.move(cardBox.x + cardBox.width / 2, cardBox.y + 20);
   await page.mouse.down();
-  await page.mouse.move(
-    columnBox.x + columnBox.width / 2,
-    columnBox.y + 120,
-    { steps: 12 }
-  );
+  await page.mouse.move(columnBox.x + columnBox.width / 2, columnBox.y + 200, { steps: 15 });
   await page.mouse.up();
-  await expect(targetColumn.getByTestId("card-card-1")).toBeVisible();
+  // Let the drop animation finish so the next drag grabs the right card.
+  await page.waitForTimeout(400);
+};
+
+test.beforeEach(async ({ request }) => {
+  // Reset the board to the default so tests are independent.
+  await request.post("/api/auth/login", { data: { username: "user", password: "password" } });
+  const board = await (await request.get("/api/board")).json();
+  board.columns.forEach((c: { cardIds: string[] }) => (c.cardIds = []));
+  const ids = ["deal-1", "deal-2", "deal-3", "deal-4", "deal-5", "deal-6", "deal-7", "deal-8"];
+  const layout = [["deal-1", "deal-2"], ["deal-3", "deal-4"], ["deal-5"], ["deal-6"], ["deal-7", "deal-8"]];
+  board.cards = Object.fromEntries(Object.entries(board.cards).filter(([id]) => ids.includes(id)));
+  layout.forEach((cardIds, i) => (board.columns[i].cardIds = cardIds.filter((id) => board.cards[id])));
+  const titles = ["Sourcing", "Underwriting", "LOI", "Due Diligence", "Closed"];
+  board.columns.forEach((c: { title: string }, i: number) => (c.title = titles[i]));
+  await request.put("/api/board", { data: board });
+});
+
+test("requires sign in and rejects bad credentials", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+  await page.getByLabel("Username").fill("user");
+  await page.getByLabel("Password").fill("wrong");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByText("Invalid username or password.")).toBeVisible();
+});
+
+test("shows the pipeline and logs out", async ({ page }) => {
+  await signIn(page);
+  await expect(page.locator('[data-testid^="column-"]')).toHaveCount(5);
+  await expect(page.getByText("Riverbend Logistics Center")).toBeVisible();
+  await page.getByRole("button", { name: "Log out" }).click();
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+});
+
+test("drag and drop persists across sign out", async ({ page }) => {
+  await signIn(page);
+  await dragCard(page, "card-deal-1", "column-col-closed");
+  await expect(page.getByTestId("column-col-closed").getByTestId("card-deal-1")).toBeVisible();
+  await expect(page.getByText("All changes saved")).toBeVisible();
+
+  await page.getByRole("button", { name: "Log out" }).click();
+  await signIn(page);
+  await expect(page.getByTestId("column-col-closed").getByTestId("card-deal-1")).toBeVisible();
+});
+
+test("repeated drags all stick", async ({ page }) => {
+  await signIn(page);
+  await dragCard(page, "card-deal-3", "column-col-loi");
+  await expect(page.getByTestId("column-col-loi").getByTestId("card-deal-3")).toBeVisible();
+  await dragCard(page, "card-deal-3", "column-col-diligence");
+  await expect(page.getByTestId("column-col-diligence").getByTestId("card-deal-3")).toBeVisible();
+  await dragCard(page, "card-deal-2", "column-col-underwriting");
+  await expect(page.getByTestId("column-col-underwriting").getByTestId("card-deal-2")).toBeVisible();
+});
+
+test("AI analyst panel hides and reopens", async ({ page }) => {
+  await signIn(page);
+  await page.getByRole("button", { name: "Hide AI analyst" }).click();
+  await expect(page.getByLabel("Message")).toBeHidden();
+  await page.getByRole("button", { name: "AI Analyst" }).click();
+  await expect(page.getByLabel("Message")).toBeVisible();
+});
+
+test("all five columns fit on a laptop screen with the analyst open", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signIn(page);
+  const closed = await page.getByTestId("column-col-closed").boundingBox();
+  const sidebar = await page.getByLabel("AI analyst", { exact: true }).boundingBox();
+  expect(closed!.x + closed!.width).toBeLessThanOrEqual(sidebar!.x);
+});
+
+test("add, edit and rename persist after reload", async ({ page }) => {
+  await signIn(page);
+  const sourcing = page.getByTestId("column-col-sourcing");
+  await sourcing.getByRole("button", { name: "Add a deal" }).click();
+  await sourcing.getByPlaceholder("Deal name").fill("Lakeview Industrial");
+  await sourcing.getByPlaceholder("Price ($)").fill("12000000");
+  await sourcing.getByPlaceholder("Cap rate (%)").fill("6.75");
+  await sourcing.getByRole("button", { name: "Add deal" }).click();
+  await expect(sourcing.getByText("Lakeview Industrial")).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit Magazine St Retail Strip", exact: true }).click();
+  await page.getByPlaceholder("Market").fill("Metairie");
+  await page.getByRole("button", { name: "Save" }).click();
+
+  const title = page.getByTestId("column-col-loi").getByLabel("Column title");
+  await title.fill("Letter of Intent");
+  await expect(page.getByText("All changes saved")).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByText("Lakeview Industrial")).toBeVisible();
+  await expect(page.getByText("Retail / Metairie")).toBeVisible();
+  await expect(page.getByTestId("column-col-loi").getByLabel("Column title")).toHaveValue("Letter of Intent");
 });
