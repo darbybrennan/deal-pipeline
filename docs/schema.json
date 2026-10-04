@@ -1,0 +1,25 @@
+{
+  "BoardData": {
+    "columns": [
+      { "id": "col-sourcing", "title": "Sourcing", "cardIds": ["deal-1"] }
+    ],
+    "cards": {
+      "deal-1": {
+        "id": "deal-1",
+        "title": "Riverbend Logistics Center",
+        "details": "Off-market bulk distribution, 36' clear.",
+        "property_type": "Industrial",
+        "market": "Dallas-Fort Worth",
+        "size_sf": 412000,
+        "price": 58500000,
+        "cap_rate": 5.6
+      }
+    }
+  },
+  "rules": [
+    "Every card id appears in exactly one column's cardIds",
+    "Card keys match card ids",
+    "Column ids and order cannot change",
+    "size_sf, price >= 0; 0 <= cap_rate <= 100; deal fields may be null"
+  ]
+}
