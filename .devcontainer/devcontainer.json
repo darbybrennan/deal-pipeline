@@ -1,0 +1,19 @@
+{
+  "name": "Deal Pipeline",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+    "ghcr.io/va-h/devcontainers-features/uv:1": {}
+  },
+  "secrets": {
+    "OPENROUTER_API_KEY": {
+      "description": "Your OpenRouter API key (from openrouter.ai/keys)"
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postAttachCommand": "bash .devcontainer/run.sh",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": { "label": "Deal Pipeline", "onAutoForward": "openBrowser" }
+  }
+}

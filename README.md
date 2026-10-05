@@ -2,7 +2,11 @@
 
 A CRE acquisitions pipeline (Kanban) with an AI analyst. Next.js frontend, FastAPI backend, SQLite, OpenRouter, all in one Docker container.
 
-## Run
+## Run in the browser (no installs)
+
+On GitHub: Code -> Codespaces -> Create codespace on main. Add `OPENROUTER_API_KEY` under Settings -> Secrets -> Codespaces first. The app opens on port 8000 (sign in with `user` / `password`).
+
+## Run locally with Docker
 
 1. Install Docker Desktop and start it.
 2. Copy `.env.example` to `.env` in the project root and paste your OpenRouter key after `OPENROUTER_API_KEY=`
