@@ -20,6 +20,7 @@ import type { CardDraft } from "@/components/CardEditor";
 import { createId, moveCard, type BoardData } from "@/lib/kanban";
 import { formatCapRate, formatCurrency, pipelineMetrics } from "@/lib/deals";
 import { api } from "@/lib/api";
+import { ChatIcon, LogoutIcon } from "@/components/Icons";
 
 const SAVE_DELAY_MS = 400;
 
@@ -155,66 +156,54 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
     error: "Save failed - check connection",
   }[saveState];
 
-  return (
-    <div className="relative min-h-screen overflow-hidden">
-      <div className="pointer-events-none absolute left-0 top-0 h-[420px] w-[420px] -translate-x-1/3 -translate-y-1/3 rounded-full bg-[radial-gradient(circle,_rgba(32,157,215,0.25)_0%,_rgba(32,157,215,0.05)_55%,_transparent_70%)]" />
-      <div className="pointer-events-none absolute bottom-0 right-0 h-[520px] w-[520px] translate-x-1/4 translate-y-1/4 rounded-full bg-[radial-gradient(circle,_rgba(117,57,145,0.18)_0%,_rgba(117,57,145,0.05)_55%,_transparent_75%)]" />
+  const iconButton =
+    "grid h-9 w-9 place-items-center rounded-xl border border-[var(--stroke)] bg-white text-[var(--navy-dark)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]";
 
-      <div className="relative mx-auto flex max-w-[1800px] flex-col gap-6 px-6 pb-16 pt-10 xl:flex-row">
-        <main className="flex min-w-0 flex-1 flex-col gap-8">
-          <header className="flex flex-col gap-6 rounded-[32px] border border-[var(--stroke)] bg-white/80 p-8 shadow-[var(--shadow)] backdrop-blur">
-            <div className="flex flex-wrap items-start justify-between gap-6">
+  return (
+    <div className="relative min-h-screen">
+      <div className="relative mx-auto flex max-w-[1920px] flex-col gap-4 px-4 pb-10 pt-4 sm:px-6 xl:flex-row">
+        <main className="flex min-w-0 flex-1 flex-col gap-4">
+          <header className="flex flex-col gap-4 rounded-2xl border border-[var(--stroke)] bg-white px-5 py-4 shadow-[0_6px_20px_rgba(3,33,71,0.06)] lg:flex-row lg:items-center">
+            <div className="flex items-center gap-3 lg:w-[220px] lg:shrink-0">
+              <div className="h-9 w-1.5 rounded-full bg-[var(--accent-yellow)]" />
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[var(--gray-text)]">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[var(--gray-text)]">
                   Acquisitions
                 </p>
-                <h1 className="mt-3 font-display text-4xl font-semibold text-[var(--navy-dark)]">
+                <h1 className="font-display text-2xl font-semibold leading-tight text-[var(--navy-dark)]">
                   Deal Pipeline
                 </h1>
-                <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--gray-text)]">
-                  Track every deal from sourcing to close. Drag deals between stages, edit the
-                  numbers, or ask the AI analyst to do it for you.
-                </p>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <div className="flex gap-2">
-                  {!chatOpen && (
-                    <button
-                      type="button"
-                      onClick={() => setChatOpen(true)}
-                      className="rounded-full bg-[var(--secondary-purple)] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:brightness-110"
-                    >
-                      AI Analyst
-                    </button>
-                  )}
-                  <button
-                  type="button"
-                  onClick={onLogout}
-                  className="rounded-full border border-[var(--stroke)] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--navy-dark)] transition hover:border-[var(--primary-blue)]"
-                >
-                    Log out
-                  </button>
-                </div>
-                <span className="text-xs text-[var(--gray-text)]" aria-live="polite">
-                  {saveLabel}
-                </span>
               </div>
             </div>
-            <dl className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <dl className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-4">
               {stats.map((stat) => (
-                <div
-                  key={stat.label}
-                  className="rounded-2xl border border-[var(--stroke)] bg-[var(--surface)] px-5 py-4"
-                >
-                  <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)]">
+                <div key={stat.label} className="rounded-xl bg-[var(--surface)] px-3.5 py-2">
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--gray-text)]">
                     {stat.label}
                   </dt>
-                  <dd className="mt-2 font-display text-2xl font-semibold text-[var(--primary-blue)]">
-                    {stat.value}
-                  </dd>
+                  <dd className="font-display text-lg font-semibold text-[var(--primary-blue)]">{stat.value}</dd>
                 </div>
               ))}
             </dl>
+            <div className="flex items-center gap-2 lg:justify-end">
+              <span className="mr-1 text-xs text-[var(--gray-text)]" aria-live="polite">
+                {saveLabel}
+              </span>
+              {!chatOpen && (
+                <button
+                  type="button"
+                  onClick={() => setChatOpen(true)}
+                  className={`${iconButton} border-transparent bg-[var(--secondary-purple)] text-white hover:text-white hover:brightness-110`}
+                  aria-label="AI Analyst"
+                  title="Open AI analyst"
+                >
+                  <ChatIcon />
+                </button>
+              )}
+              <button type="button" onClick={onLogout} className={iconButton} aria-label="Log out" title="Log out">
+                <LogoutIcon />
+              </button>
+            </div>
           </header>
 
           <DndContext
@@ -224,10 +213,11 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
             onDragEnd={handleDragEnd}
             onDragCancel={() => setActiveCardId(null)}
           >
-            <section className="grid auto-cols-[minmax(200px,1fr)] grid-flow-col gap-3 overflow-x-auto pb-4">
-              {board.columns.map((column) => (
+            <section className="grid auto-cols-[minmax(192px,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2">
+              {board.columns.map((column, index) => (
                 <KanbanColumn
                   key={column.id}
+                  index={index}
                   column={column}
                   cards={column.cardIds.map((cardId) => board.cards[cardId])}
                   onRename={handleRenameColumn}

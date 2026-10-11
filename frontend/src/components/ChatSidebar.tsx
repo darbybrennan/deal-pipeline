@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import clsx from "clsx";
 import { api, type ChatMessage } from "@/lib/api";
 import type { BoardData } from "@/lib/kanban";
+import { CloseIcon } from "@/components/Icons";
 
 const SUGGESTIONS = [
   "Summarize my pipeline",
@@ -55,7 +56,7 @@ export const ChatSidebar = ({ open = true, onClose, onBoardUpdate }: ChatSidebar
   return (
     <aside
       className={clsx(
-        "h-[640px] flex-col rounded-[32px] border border-[var(--stroke)] bg-white/90 shadow-[var(--shadow)] backdrop-blur xl:sticky xl:top-10 xl:h-[calc(100vh-5rem)] xl:w-[310px] xl:shrink-0",
+        "h-[600px] flex-col rounded-2xl border border-[var(--stroke)] bg-white shadow-[0_6px_20px_rgba(3,33,71,0.06)] xl:sticky xl:top-4 xl:h-[calc(100vh-2rem)] xl:w-[310px] xl:shrink-0",
         open ? "flex" : "hidden"
       )}
       aria-label="AI analyst"
@@ -65,10 +66,11 @@ export const ChatSidebar = ({ open = true, onClose, onBoardUpdate }: ChatSidebar
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-5 top-5 rounded-full border border-[var(--stroke)] px-3 py-1 text-xs font-semibold text-[var(--gray-text)] transition hover:text-[var(--navy-dark)]"
+            className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-lg text-[var(--gray-text)] transition hover:bg-[var(--surface)] hover:text-[var(--navy-dark)]"
             aria-label="Hide AI analyst"
+            title="Hide"
           >
-            Hide
+            <CloseIcon />
           </button>
         )}
         <div className="h-1.5 w-10 rounded-full bg-[var(--accent-yellow)]" />
