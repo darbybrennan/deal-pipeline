@@ -14,6 +14,8 @@ STATIC_DIR = Path(os.getenv("PM_STATIC_DIR", PROJECT_ROOT / "frontend" / "out"))
 DEMO_USERNAME = "user"
 DEMO_PASSWORD = "password"
 SESSION_COOKIE = "pm_session"
+SESSION_MAX_AGE_DAYS = 7
+MAX_CHAT_HISTORY = 20
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 AI_MODEL = "openai/gpt-oss-120b"

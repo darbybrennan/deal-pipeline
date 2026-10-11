@@ -5,10 +5,6 @@ def test_health(client):
     assert client.get("/api/health").json() == {"status": "ok"}
 
 
-def test_hello(client):
-    assert client.get("/api/hello").json() == {"message": "Hello from FastAPI"}
-
-
 def test_db_created_on_startup(client):
     assert config.DB_PATH.exists()
 

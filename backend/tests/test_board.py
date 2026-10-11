@@ -70,8 +70,8 @@ def test_rejects_bad_cap_rate(auth_client):
 
 def test_boards_are_per_user(client):
     with get_conn() as conn:
-        a = auth.get_or_create_user(conn, "alice")
-        b = auth.get_or_create_user(conn, "bob")
+        a = auth.register(conn, "alice", "alicepass1")
+        b = auth.register(conn, "bobby", "bobbypass1")
         alice = board.load_board(conn, a)
         alice.columns[0].title = "Alice only"
         board.save_board(conn, a, alice)

@@ -59,7 +59,31 @@ def test_chat_ai_failure_returns_502(auth_client, monkeypatch):
         raise RuntimeError("down")
 
     monkeypatch.setattr(ai, "chat", boom)
-    assert auth_client.post("/api/chat", json={"message": "hi"}).status_code == 502
+    r = auth_client.post("/api/chat", json={"message": "hi"})
+    assert r.status_code == 502
+    assert "down" not in r.json()["detail"]  # internal error text is not leaked
+
+
+def test_chat_reports_removed_deals(auth_client, monkeypatch):
+    shrunk = board_as_ai()
+    shrunk.columns[4].card_ids.remove("deal-8")
+    shrunk.cards = [c for c in shrunk.cards if c.id != "deal-8"]
+    monkeypatch.setattr(ai, "chat", lambda *a: AIResponse(reply="Cleaned up.", board=shrunk))
+    r = auth_client.post("/api/chat", json={"message": "tidy"})
+    assert "Removed from the pipeline: Mid-City Industrial Infill" in r.json()["reply"]
+
+
+def test_chat_history_is_capped(auth_client, monkeypatch):
+    seen = {}
+
+    def fake(board, history, message):
+        seen["n"] = len(history)
+        return AIResponse(reply="ok", board=None)
+
+    monkeypatch.setattr(ai, "chat", fake)
+    history = [{"role": "user", "content": str(i)} for i in range(50)]
+    auth_client.post("/api/chat", json={"message": "hi", "history": history})
+    assert seen["n"] == 20
 
 
 @live
