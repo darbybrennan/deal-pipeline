@@ -1,32 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KanbanBoard } from "@/components/KanbanBoard";
 import { LoginForm } from "@/components/LoginForm";
+import { Workspace } from "@/components/Workspace";
 import { api } from "@/lib/api";
 
-type AuthState = "loading" | "signed-out" | "signed-in";
+type AuthState = { status: "loading" } | { status: "signed-out" } | { status: "signed-in"; username: string };
 
 export default function Home() {
-  const [auth, setAuth] = useState<AuthState>("loading");
+  const [auth, setAuth] = useState<AuthState>({ status: "loading" });
 
   useEffect(() => {
     api
       .me()
-      .then(() => setAuth("signed-in"))
-      .catch(() => setAuth("signed-out"));
+      .then((me) => setAuth({ status: "signed-in", username: me.username }))
+      .catch(() => setAuth({ status: "signed-out" }));
   }, []);
 
   const handleLogout = async () => {
     await api.logout();
-    setAuth("signed-out");
+    setAuth({ status: "signed-out" });
   };
 
-  if (auth === "loading") {
-    return null;
+  if (auth.status === "loading") return null;
+  if (auth.status === "signed-out") {
+    return <LoginForm onSuccess={(username) => setAuth({ status: "signed-in", username })} />;
   }
-  if (auth === "signed-out") {
-    return <LoginForm onSuccess={() => setAuth("signed-in")} />;
-  }
-  return <KanbanBoard onLogout={handleLogout} />;
+  return (
+    <Workspace
+      username={auth.username}
+      onLogout={handleLogout}
+      onAccountDeleted={() => setAuth({ status: "signed-out" })}
+    />
+  );
 }

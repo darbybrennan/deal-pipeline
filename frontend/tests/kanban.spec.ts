@@ -5,7 +5,8 @@ const signIn = async (page: Page) => {
   await page.getByLabel("Username").fill("user");
   await page.getByLabel("Password").fill("password");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("heading", { name: "Deal Pipeline" })).toBeVisible();
+  // The login page shares the heading, so wait for something only the signed-in view has.
+  await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
 };
 
 const dragCard = async (page: Page, cardTestId: string, columnTestId: string) => {
@@ -25,6 +26,8 @@ const dragCard = async (page: Page, cardTestId: string, columnTestId: string) =>
 test.beforeEach(async ({ request }) => {
   // Reset the board to the default so tests are independent.
   await request.post("/api/auth/login", { data: { username: "user", password: "password" } });
+  const boards = await (await request.get("/api/boards")).json();
+  for (const b of boards.slice(1)) await request.delete(`/api/boards/${b.id}`);
   const board = await (await request.get("/api/board")).json();
   board.columns.forEach((c: { cardIds: string[] }) => (c.cardIds = []));
   const ids = ["deal-1", "deal-2", "deal-3", "deal-4", "deal-5", "deal-6", "deal-7", "deal-8"];
@@ -112,4 +115,71 @@ test("add, edit and rename persist after reload", async ({ page }) => {
   await expect(page.getByText("Lakeview Industrial")).toBeVisible();
   await expect(page.getByText("Retail / Metairie")).toBeVisible();
   await expect(page.getByTestId("column-col-loi").getByLabel("Column title")).toHaveValue("Letter of Intent");
+});
+
+const signUp = async (page: Page, username: string, password = "pipeline1") => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /create an account/i }).click();
+  await page.getByLabel("Username").fill(username);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Create account" }).click();
+  // The login page shares the heading, so wait for something only the signed-in view has.
+  await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
+};
+
+const uniqueName = (prefix: string) => `${prefix}${Date.now().toString(36)}`;
+
+test("sign up, sign out and sign back in", async ({ page }) => {
+  const name = uniqueName("e2e");
+  await signUp(page, name);
+  await expect(page.getByRole("button", { name: "Account", exact: true })).toContainText(name);
+  await page.getByRole("button", { name: "Log out" }).click();
+  await page.getByLabel("Username").fill(name);
+  await page.getByLabel("Password").fill("pipeline1");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByText("Riverbend Logistics Center")).toBeVisible();
+});
+
+test("multiple pipelines keep their own deals", async ({ page }) => {
+  await signUp(page, uniqueName("multi"));
+  await page.getByRole("button", { name: "New pipeline" }).click();
+  await page.getByLabel("Pipeline name").fill("Data Center Fund");
+  await page.getByRole("button", { name: "Create" }).click();
+  await expect(page.getByText("Riverbend Logistics Center")).toBeHidden();
+
+  const sourcing = page.getByTestId("column-col-sourcing");
+  await sourcing.getByRole("button", { name: "Add a deal" }).click();
+  await sourcing.getByPlaceholder("Deal name").fill("Ashburn Powered Land");
+  await sourcing.getByRole("button", { name: "Add deal" }).click();
+  await expect(page.getByText("All changes saved")).toBeVisible();
+
+  await page.getByLabel("Pipeline", { exact: true }).selectOption({ label: "Acquisitions Pipeline (8)" });
+  await expect(page.getByText("Riverbend Logistics Center")).toBeVisible();
+  await expect(page.getByText("Ashburn Powered Land")).toBeHidden();
+
+  await page.getByLabel("Pipeline", { exact: true }).selectOption({ label: "Data Center Fund (1)" });
+  await expect(page.getByText("Ashburn Powered Land")).toBeVisible();
+
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Delete pipeline" }).click();
+  await expect(page.getByText("Riverbend Logistics Center")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Delete pipeline" })).toBeDisabled();
+});
+
+test("change password and delete account", async ({ page }) => {
+  const name = uniqueName("acct");
+  await signUp(page, name, "firstpass1");
+  await page.getByRole("button", { name: "Account", exact: true }).click();
+  await page.getByLabel("Current password").fill("firstpass1");
+  await page.getByLabel("New password").fill("secondpass2");
+  await page.getByRole("button", { name: "Update password" }).click();
+  await expect(page.getByText(/Password updated/)).toBeVisible();
+
+  await page.getByLabel("Confirm password").fill("secondpass2");
+  await page.getByRole("button", { name: "Delete my account" }).click();
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+  await page.getByLabel("Username").fill(name);
+  await page.getByLabel("Password").fill("secondpass2");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByText("Invalid username or password.")).toBeVisible();
 });

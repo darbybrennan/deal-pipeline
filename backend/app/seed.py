@@ -41,3 +41,13 @@ DEFAULT_BOARD = BoardData.model_validate(
         },
     }
 )
+
+
+def empty_board() -> BoardData:
+    """Same deal stages as the sample pipeline, with no deals."""
+    return BoardData.model_validate(
+        {
+            "columns": [{**c.model_dump(), "cardIds": []} for c in DEFAULT_BOARD.columns],
+            "cards": {},
+        }
+    )

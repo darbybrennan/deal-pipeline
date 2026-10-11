@@ -2,6 +2,7 @@ import type { BoardData } from "@/lib/kanban";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 export type ChatResult = { reply: string; board: BoardData | null };
+export type BoardSummary = { id: number; title: string; deals: number };
 
 export class ApiError extends Error {
   constructor(
@@ -25,20 +26,27 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
   return res.json();
 };
 
+const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) });
+
 export const api = {
   login: (username: string, password: string) =>
-    request<{ username: string }>("/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    }),
+    request<{ username: string }>("/api/auth/login", json("POST", { username, password })),
+  register: (username: string, password: string) =>
+    request<{ username: string }>("/api/auth/register", json("POST", { username, password })),
   logout: () => request<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
   me: () => request<{ username: string }>("/api/auth/me"),
-  getBoard: () => request<BoardData>("/api/board"),
-  saveBoard: (board: BoardData) =>
-    request<BoardData>("/api/board", { method: "PUT", body: JSON.stringify(board) }),
-  chat: (message: string, history: ChatMessage[]) =>
-    request<ChatResult>("/api/chat", {
-      method: "POST",
-      body: JSON.stringify({ message, history }),
-    }),
+  changePassword: (current_password: string, new_password: string) =>
+    request<{ ok: boolean }>("/api/auth/password", json("POST", { current_password, new_password })),
+  deleteAccount: (password: string) =>
+    request<{ ok: boolean }>("/api/auth/account", json("DELETE", { password })),
+  listBoards: () => request<BoardSummary[]>("/api/boards"),
+  createBoard: (title: string) => request<BoardSummary>("/api/boards", json("POST", { title })),
+  renameBoard: (id: number, title: string) =>
+    request<{ ok: boolean }>(`/api/boards/${id}`, json("PATCH", { title })),
+  deleteBoard: (id: number) => request<{ ok: boolean }>(`/api/boards/${id}`, { method: "DELETE" }),
+  getBoard: (id: number) => request<BoardData>(`/api/boards/${id}/data`),
+  saveBoard: (id: number, board: BoardData) =>
+    request<BoardData>(`/api/boards/${id}/data`, json("PUT", board)),
+  chat: (id: number, message: string, history: ChatMessage[]) =>
+    request<ChatResult>(`/api/boards/${id}/chat`, json("POST", { message, history })),
 };

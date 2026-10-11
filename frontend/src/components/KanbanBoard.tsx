@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -20,7 +20,7 @@ import type { CardDraft } from "@/components/CardEditor";
 import { createId, moveCard, type BoardData } from "@/lib/kanban";
 import { formatCapRate, formatCurrency, pipelineMetrics } from "@/lib/deals";
 import { api } from "@/lib/api";
-import { ChatIcon, LogoutIcon } from "@/components/Icons";
+import { ChatIcon, LogoutIcon, UserIcon } from "@/components/Icons";
 
 const SAVE_DELAY_MS = 400;
 
@@ -34,10 +34,15 @@ const collisionDetection: CollisionDetection = (args) => {
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 type KanbanBoardProps = {
+  boardId: number;
   onLogout: () => void;
+  username?: string;
+  toolbar?: ReactNode;
+  onOpenAccount?: () => void;
+  onChanged?: () => void;
 };
 
-export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
+export const KanbanBoard = ({ boardId, onLogout, username, toolbar, onOpenAccount, onChanged }: KanbanBoardProps) => {
   const [board, setBoard] = useState<BoardData | null>(null);
   const [loadError, setLoadError] = useState("");
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -55,10 +60,10 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
 
   useEffect(() => {
     api
-      .getBoard()
+      .getBoard(boardId)
       .then(setBoard)
       .catch(() => setLoadError("Could not load your board."));
-  }, []);
+  }, [boardId]);
 
   useEffect(() => {
     if (!board || !dirty.current) return;
@@ -66,12 +71,15 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
       dirty.current = false;
       setSaveState("saving");
       api
-        .saveBoard(board)
-        .then(() => setSaveState("saved"))
+        .saveBoard(boardId, board)
+        .then(() => {
+          setSaveState("saved");
+          onChanged?.();
+        })
         .catch(() => setSaveState("error"));
     }, SAVE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [board]);
+  }, [board, boardId, onChanged]);
 
   const update = (updater: (prev: BoardData) => BoardData) => {
     dirty.current = true;
@@ -81,6 +89,7 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
   const handleServerBoard = (next: BoardData) => {
     dirty.current = false;
     setBoard(next);
+    onChanged?.();
   };
 
   if (loadError) {
@@ -163,8 +172,9 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
     <div className="relative min-h-screen">
       <div className="relative mx-auto flex max-w-[1920px] flex-col gap-4 px-4 pb-10 pt-4 sm:px-6 xl:flex-row">
         <main className="flex min-w-0 flex-1 flex-col gap-4">
-          <header className="flex flex-col gap-4 rounded-2xl border border-[var(--stroke)] bg-white px-5 py-4 shadow-[0_6px_20px_rgba(3,33,71,0.06)] lg:flex-row lg:items-center">
-            <div className="flex items-center gap-3 lg:w-[220px] lg:shrink-0">
+          <header className="flex flex-col gap-4 rounded-2xl border border-[var(--stroke)] bg-white px-5 py-4 shadow-[0_6px_20px_rgba(3,33,71,0.06)]">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+            <div className="flex items-center gap-3">
               <div className="h-9 w-1.5 rounded-full bg-[var(--accent-yellow)]" />
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[var(--gray-text)]">
@@ -175,17 +185,8 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
                 </h1>
               </div>
             </div>
-            <dl className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-4">
-              {stats.map((stat) => (
-                <div key={stat.label} className="rounded-xl bg-[var(--surface)] px-3.5 py-2">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--gray-text)]">
-                    {stat.label}
-                  </dt>
-                  <dd className="font-display text-lg font-semibold text-[var(--primary-blue)]">{stat.value}</dd>
-                </div>
-              ))}
-            </dl>
-            <div className="flex items-center gap-2 lg:justify-end">
+            <div className="flex-1">{toolbar}</div>
+            <div className="flex items-center gap-2">
               <span className="mr-1 text-xs text-[var(--gray-text)]" aria-live="polite">
                 {saveLabel}
               </span>
@@ -200,10 +201,33 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
                   <ChatIcon />
                 </button>
               )}
+              {onOpenAccount && (
+                <button
+                  type="button"
+                  onClick={onOpenAccount}
+                  className="flex h-9 items-center gap-2 rounded-xl border border-[var(--stroke)] bg-white px-3 text-sm font-semibold text-[var(--navy-dark)] transition hover:border-[var(--primary-blue)]"
+                  aria-label="Account"
+                  title="Account"
+                >
+                  <UserIcon />
+                  <span className="hidden sm:inline">{username}</span>
+                </button>
+              )}
               <button type="button" onClick={onLogout} className={iconButton} aria-label="Log out" title="Log out">
                 <LogoutIcon />
               </button>
             </div>
+            </div>
+            <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {stats.map((stat) => (
+                <div key={stat.label} className="rounded-xl bg-[var(--surface)] px-3.5 py-2">
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--gray-text)]">
+                    {stat.label}
+                  </dt>
+                  <dd className="font-display text-lg font-semibold text-[var(--primary-blue)]">{stat.value}</dd>
+                </div>
+              ))}
+            </dl>
           </header>
 
           <DndContext
@@ -237,7 +261,7 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
           </DndContext>
         </main>
 
-        <ChatSidebar open={chatOpen} onClose={() => setChatOpen(false)} onBoardUpdate={handleServerBoard} />
+        <ChatSidebar key={boardId} boardId={boardId} open={chatOpen} onClose={() => setChatOpen(false)} onBoardUpdate={handleServerBoard} />
       </div>
     </div>
   );

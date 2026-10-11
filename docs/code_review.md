@@ -58,3 +58,13 @@ These were investigated because they look like problems at a glance. Each was ve
 - Medium 7: history capped at 20 messages server-side.
 - Medium 8: `/api/hello` and unused `initialData` removed.
 - Tests: backend 24 -> 30 passing (new: hashing, register, validation, expiry, legacy DB migration, removed-deal notice, history cap, no error leak). Frontend 22 passing. ESLint and `tsc` clean.
+
+## Feature build (Week 2 Day 2 "Ralph loop" prompt)
+
+Prompt: add users and user management and multiple boards per user, testing thoroughly.
+
+- Accounts: sign-up screen, account panel (change password signs out other devices; delete account removes all pipelines).
+- Multiple pipelines per user: create, switch, rename, delete; new pipelines start empty with the standard stages; the AI analyst works on the selected pipeline. Users get 404 on boards they do not own.
+- API: `/api/boards`, `/api/boards/{id}`, `/api/boards/{id}/data`, `/api/boards/{id}/chat`, `/api/auth/register|password|account`. Legacy `/api/board` and `/api/chat` still work against the first pipeline.
+- Tests: backend 38 passing, frontend unit 32 passing, browser E2E 10 passing (40/40 across 4 repeated runs).
+- Bugs caught by testing along the way: fifth column hidden under the AI panel at 1440px after the UI pass (width math), and a flaky E2E helper that treated the login page as signed in because both pages share a heading.

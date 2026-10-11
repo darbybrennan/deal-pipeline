@@ -1,10 +1,10 @@
 # Deal Pipeline
 
-A CRE acquisitions pipeline (Kanban) with an AI analyst. Next.js frontend, FastAPI backend, SQLite, OpenRouter, all in one Docker container.
+A CRE acquisitions pipeline (Kanban) with an AI analyst. Accounts, multiple pipelines per user, Next.js frontend, FastAPI backend, SQLite, OpenRouter, all in one Docker container.
 
 ## Run in the browser (no installs)
 
-On GitHub: Code -> Codespaces -> Create codespace on main. Add `OPENROUTER_API_KEY` under Settings -> Secrets -> Codespaces first. The app opens on port 8000 (sign in with `user` / `password`).
+On GitHub: Code -> Codespaces -> Create codespace on main. Add `OPENROUTER_API_KEY` under Settings -> Secrets -> Codespaces first. The app opens on port 8000 (sign in with `user` / `password`, or create an account).
 
 ## Run locally with Docker
 
@@ -20,4 +20,4 @@ On GitHub: Code -> Codespaces -> Create codespace on main. Add `OPENROUTER_API_K
 - Frontend unit: `cd frontend && npm install && npm test`
 - E2E (app running): `cd frontend && npx playwright install chromium && npm run test:e2e`
 
-See `docs/PLAN.md` for the build plan and decisions, `docs/DATABASE.md` for the schema.
+See `docs/PLAN.md` for the build plan, `docs/DATABASE.md` for the schema, `docs/code_review.md` for the latest review.

@@ -53,3 +53,16 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     board: BoardData | None = None
+
+
+class BoardTitle(BaseModel):
+    title: str = Field(min_length=1, max_length=60)
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class PasswordConfirm(BaseModel):
+    password: str

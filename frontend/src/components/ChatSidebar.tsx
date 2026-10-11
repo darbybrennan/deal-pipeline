@@ -11,12 +11,13 @@ const SUGGESTIONS = [
 ];
 
 type ChatSidebarProps = {
+  boardId: number;
   open?: boolean;
   onClose?: () => void;
   onBoardUpdate: (board: BoardData) => void;
 };
 
-export const ChatSidebar = ({ open = true, onClose, onBoardUpdate }: ChatSidebarProps) => {
+export const ChatSidebar = ({ boardId, open = true, onClose, onBoardUpdate }: ChatSidebarProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -38,7 +39,7 @@ export const ChatSidebar = ({ open = true, onClose, onBoardUpdate }: ChatSidebar
     setError("");
     setThinking(true);
     try {
-      const result = await api.chat(message, history);
+      const result = await api.chat(boardId, message, history);
       setMessages((prev) => [...prev, { role: "assistant", content: result.reply }]);
       if (result.board) onBoardUpdate(result.board);
     } catch {

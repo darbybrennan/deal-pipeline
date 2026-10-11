@@ -6,7 +6,15 @@ from pydantic import ValidationError
 
 from app import ai, auth, board, config
 from app.db import db_dependency
-from app.models import BoardData, ChatRequest, ChatResponse, LoginRequest
+from app.models import (
+    BoardData,
+    BoardTitle,
+    ChatRequest,
+    ChatResponse,
+    LoginRequest,
+    PasswordChange,
+    PasswordConfirm,
+)
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
@@ -66,6 +74,106 @@ def me(user: dict = Depends(auth.current_user)):
     return {"username": user["username"]}
 
 
+@router.post("/auth/password")
+def change_password(
+    body: PasswordChange,
+    response: Response,
+    user: dict = Depends(auth.current_user),
+    conn: sqlite3.Connection = Depends(db_dependency),
+):
+    try:
+        auth.change_password(conn, user["id"], body.current_password, body.new_password)
+    except auth.AuthError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    # Other devices are signed out; keep this one signed in.
+    _start_session(conn, response, user["id"])
+    return {"ok": True}
+
+
+@router.delete("/auth/account")
+def delete_account(
+    body: PasswordConfirm,
+    response: Response,
+    user: dict = Depends(auth.current_user),
+    conn: sqlite3.Connection = Depends(db_dependency),
+):
+    try:
+        auth.delete_user(conn, user["id"], body.password)
+    except auth.AuthError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    response.delete_cookie(config.SESSION_COOKIE)
+    return {"ok": True}
+
+
+@router.get("/boards")
+def list_boards(user: dict = Depends(auth.current_user), conn: sqlite3.Connection = Depends(db_dependency)):
+    return board.list_boards(conn, user["id"])
+
+
+@router.post("/boards")
+def create_board(
+    body: BoardTitle, user: dict = Depends(auth.current_user), conn: sqlite3.Connection = Depends(db_dependency)
+):
+    board_id = board.create_board(conn, user["id"], body.title.strip())
+    return {"id": board_id, "title": body.title.strip(), "deals": 0}
+
+
+def _board_errors(fn):
+    try:
+        return fn()
+    except board.BoardNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except board.BoardError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.patch("/boards/{board_id}")
+def rename_board(
+    board_id: int,
+    body: BoardTitle,
+    user: dict = Depends(auth.current_user),
+    conn: sqlite3.Connection = Depends(db_dependency),
+):
+    _board_errors(lambda: board.rename_board(conn, user["id"], board_id, body.title.strip()))
+    return {"ok": True}
+
+
+@router.delete("/boards/{board_id}")
+def delete_board(
+    board_id: int, user: dict = Depends(auth.current_user), conn: sqlite3.Connection = Depends(db_dependency)
+):
+    _board_errors(lambda: board.delete_board(conn, user["id"], board_id))
+    return {"ok": True}
+
+
+@router.get("/boards/{board_id}/data")
+def get_board_data(
+    board_id: int, user: dict = Depends(auth.current_user), conn: sqlite3.Connection = Depends(db_dependency)
+) -> BoardData:
+    return _board_errors(lambda: board.load_board(conn, user["id"], board_id))
+
+
+@router.put("/boards/{board_id}/data")
+def put_board_data(
+    board_id: int,
+    body: BoardData,
+    user: dict = Depends(auth.current_user),
+    conn: sqlite3.Connection = Depends(db_dependency),
+) -> BoardData:
+    return _board_errors(lambda: board.save_board(conn, user["id"], body, board_id))
+
+
+@router.post("/boards/{board_id}/chat")
+def chat_on_board(
+    board_id: int,
+    body: ChatRequest,
+    user: dict = Depends(auth.current_user),
+    conn: sqlite3.Connection = Depends(db_dependency),
+) -> ChatResponse:
+    return _board_errors(lambda: _chat(conn, user["id"], board_id, body))
+
+
+# Default-board routes, kept so older clients and scripts keep working.
 @router.get("/board")
 def get_board(user: dict = Depends(auth.current_user), conn: sqlite3.Connection = Depends(db_dependency)) -> BoardData:
     return board.load_board(conn, user["id"])
@@ -102,7 +210,11 @@ def chat(
     user: dict = Depends(auth.current_user),
     conn: sqlite3.Connection = Depends(db_dependency),
 ) -> ChatResponse:
-    current = board.load_board(conn, user["id"])
+    return _chat(conn, user["id"], None, body)
+
+
+def _chat(conn: sqlite3.Connection, user_id: int, board_id: int | None, body: ChatRequest) -> ChatResponse:
+    current = board.load_board(conn, user_id, board_id)
     history = body.history[-config.MAX_CHAT_HISTORY :]
     try:
         result = ai.chat(current, history, body.message)
@@ -113,7 +225,7 @@ def chat(
         return ChatResponse(reply=result.reply)
     try:
         proposed = ai.to_board_data(result.board)
-        updated = board.save_board(conn, user["id"], proposed)
+        updated = board.save_board(conn, user_id, proposed, board_id)
     except (ValidationError, board.BoardError) as e:
         return ChatResponse(reply=f"{result.reply}\n\n(I couldn't apply that change: {e})")
     reply = result.reply

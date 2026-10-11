@@ -11,9 +11,9 @@ This project is building a Project Management App. Key features:
 
 ## Limitations
 
-For the MVP, there will only be a user sign in (hardcoded to 'user' and 'password') but the database will support multiple users for future.
+Users can create accounts (salted scrypt password hashes); the demo login 'user' / 'password' is kept for the course. Users can change their password and delete their account.
 
-For the MVP, there will only be 1 Kanban board per signed in user.
+Each user can have multiple pipelines (boards): create, switch, rename, delete (at least one must remain). Every pipeline uses the same fixed deal stages.
 
 For the MVP, this will run locally (in a docker container)
 

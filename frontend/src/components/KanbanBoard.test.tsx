@@ -25,11 +25,11 @@ const mocked = vi.mocked(api);
 beforeEach(() => {
   vi.clearAllMocks();
   mocked.getBoard.mockResolvedValue(board());
-  mocked.saveBoard.mockImplementation(async (b: BoardData) => b);
+  mocked.saveBoard.mockImplementation(async (_id: number, b: BoardData) => b);
 });
 
 const renderBoard = async () => {
-  render(<KanbanBoard onLogout={vi.fn()} />);
+  render(<KanbanBoard boardId={1} onLogout={vi.fn()} />);
   await screen.findByText("Riverbend");
 };
 
@@ -56,7 +56,7 @@ describe("KanbanBoard", () => {
     await userEvent.clear(input);
     await userEvent.type(input, "Pipeline");
     await waitFor(() => expect(mocked.saveBoard).toHaveBeenCalled());
-    const saved = mocked.saveBoard.mock.calls.at(-1)![0];
+    const saved = mocked.saveBoard.mock.calls.at(-1)![1];
     expect(saved.columns[0].title).toBe("Pipeline");
   });
 
@@ -70,7 +70,7 @@ describe("KanbanBoard", () => {
 
     expect(within(column).getByText("New deal")).toBeInTheDocument();
     await waitFor(() => expect(mocked.saveBoard).toHaveBeenCalled());
-    const saved = mocked.saveBoard.mock.calls.at(-1)![0];
+    const saved = mocked.saveBoard.mock.calls.at(-1)![1];
     const added = Object.values(saved.cards).find((c) => c.title === "New deal")!;
     expect(added.price).toBe(2500000);
     expect(saved.columns[0].cardIds).toContain(added.id);
@@ -85,7 +85,7 @@ describe("KanbanBoard", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(within(screen.getByTestId("card-deal-1")).getByText("6.50%")).toBeInTheDocument();
     await waitFor(() =>
-      expect(mocked.saveBoard.mock.calls.at(-1)![0].cards["deal-1"].cap_rate).toBe(6.5)
+      expect(mocked.saveBoard.mock.calls.at(-1)![1].cards["deal-1"].cap_rate).toBe(6.5)
     );
   });
 
@@ -94,7 +94,7 @@ describe("KanbanBoard", () => {
     await userEvent.click(screen.getByRole("button", { name: "Delete Riverbend" }));
     expect(screen.queryByText("Riverbend")).not.toBeInTheDocument();
     await waitFor(() =>
-      expect(mocked.saveBoard.mock.calls.at(-1)![0].cards["deal-1"]).toBeUndefined()
+      expect(mocked.saveBoard.mock.calls.at(-1)![1].cards["deal-1"]).toBeUndefined()
     );
   });
 
@@ -117,7 +117,7 @@ describe("KanbanBoard", () => {
 
   it("shows an error if the board fails to load", async () => {
     mocked.getBoard.mockRejectedValue(new Error("down"));
-    render(<KanbanBoard onLogout={vi.fn()} />);
+    render(<KanbanBoard boardId={1} onLogout={vi.fn()} />);
     expect(await screen.findByText("Could not load your board.")).toBeInTheDocument();
   });
 });

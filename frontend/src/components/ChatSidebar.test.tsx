@@ -12,21 +12,21 @@ describe("ChatSidebar", () => {
   it("sends a message and shows the reply", async () => {
     mocked.chat.mockResolvedValue({ reply: "You have 8 deals.", board: null });
     const onBoardUpdate = vi.fn();
-    render(<ChatSidebar onBoardUpdate={onBoardUpdate} />);
+    render(<ChatSidebar boardId={7} onBoardUpdate={onBoardUpdate} />);
 
     await userEvent.type(screen.getByLabelText("Message"), "How many deals?");
     await userEvent.click(screen.getByRole("button", { name: "Send" }));
 
     expect(await screen.findByText("You have 8 deals.")).toBeInTheDocument();
     expect(screen.getByText("How many deals?")).toBeInTheDocument();
-    expect(mocked.chat).toHaveBeenCalledWith("How many deals?", []);
+    expect(mocked.chat).toHaveBeenCalledWith(7, "How many deals?", []);
     expect(onBoardUpdate).not.toHaveBeenCalled();
   });
 
   it("sends conversation history on follow-ups", async () => {
     mocked.chat.mockResolvedValueOnce({ reply: "First", board: null });
     mocked.chat.mockResolvedValueOnce({ reply: "Second", board: null });
-    render(<ChatSidebar onBoardUpdate={vi.fn()} />);
+    render(<ChatSidebar boardId={7} onBoardUpdate={vi.fn()} />);
 
     await userEvent.type(screen.getByLabelText("Message"), "one");
     await userEvent.click(screen.getByRole("button", { name: "Send" }));
@@ -35,7 +35,7 @@ describe("ChatSidebar", () => {
     await userEvent.click(screen.getByRole("button", { name: "Send" }));
     await screen.findByText("Second");
 
-    expect(mocked.chat).toHaveBeenLastCalledWith("two", [
+    expect(mocked.chat).toHaveBeenLastCalledWith(7, "two", [
       { role: "user", content: "one" },
       { role: "assistant", content: "First" },
     ]);
@@ -43,14 +43,14 @@ describe("ChatSidebar", () => {
 
   it("suggestion buttons send immediately", async () => {
     mocked.chat.mockResolvedValue({ reply: "Summary", board: null });
-    render(<ChatSidebar onBoardUpdate={vi.fn()} />);
+    render(<ChatSidebar boardId={7} onBoardUpdate={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: "Summarize my pipeline" }));
     expect(await screen.findByText("Summary")).toBeInTheDocument();
   });
 
   it("shows an error when the AI fails", async () => {
     mocked.chat.mockRejectedValue(new Error("502"));
-    render(<ChatSidebar onBoardUpdate={vi.fn()} />);
+    render(<ChatSidebar boardId={7} onBoardUpdate={vi.fn()} />);
     await userEvent.type(screen.getByLabelText("Message"), "hi");
     await userEvent.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't respond/i);
